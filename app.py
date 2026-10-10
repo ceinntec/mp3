@@ -10,7 +10,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 CHORD_LABELS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-# Función para agregar cabeceras CORS a todas las respuestas
 @app.after_request
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
@@ -24,7 +23,6 @@ def index():
 
 @app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_audio():
-    # Responder a las peticiones pre-vuelo (OPTIONS) de CORS
     if request.method == 'OPTIONS':
         return '', 200
 
@@ -40,7 +38,8 @@ def upload_audio():
         file.save(filepath)
         
         try:
-            y, sr = librosa.load(filepath, sr=22050, duration=60.0)
+            # Cargar con un sample rate bajo (11025 Hz) y limitar a 30 segundos para ahorrar memoria RAM
+            y, sr = librosa.load(filepath, sr=11025, duration=30.0)
             chroma = librosa.feature.chroma_stft(y=y, sr=sr)
             
             hop_length = 512
@@ -65,7 +64,9 @@ def upload_audio():
                         'chord': chord_name
                     })
             
-            os.remove(filepath)
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                
             return jsonify({'success': True, 'chords': chords_detected})
             
         except Exception as e:
