@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, jsonify
 import librosa
 import numpy as np
 
@@ -10,13 +10,24 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 CHORD_LABELS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
+# Función para agregar cabeceras CORS a todas las respuestas
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'
+    return response
+
 @app.route('/')
 def index():
     return "Servidor de Acordes Activo 🎸"
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_audio():
-    # Permitir peticiones desde cualquier origen (CORS básico)
+    # Responder a las peticiones pre-vuelo (OPTIONS) de CORS
+    if request.method == 'OPTIONS':
+        return '', 200
+
     if 'file' not in request.files:
         return jsonify({'error': 'No se subió ningún archivo'}), 400
     
@@ -55,10 +66,7 @@ def upload_audio():
                     })
             
             os.remove(filepath)
-            
-            response = jsonify({'success': True, 'chords': chords_detected})
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            return response
+            return jsonify({'success': True, 'chords': chords_detected})
             
         except Exception as e:
             if os.path.exists(filepath):
